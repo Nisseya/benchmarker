@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
-class LLMClientPort(ABC):
+class LLMProviderPort(ABC):
     @abstractmethod
     def generate_code(self, prompt: str, model_id: str) -> str:
         """Demande au modèle de générer le code (SQL ou Python)."""

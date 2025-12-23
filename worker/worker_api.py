@@ -22,6 +22,7 @@ async def execute_code(payload: dict = Body(...)):
     captured_state = {}
     status = "success"
     error = None
+    code = str(code)
     
     try:
         if language == "python":

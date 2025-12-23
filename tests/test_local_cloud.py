@@ -26,13 +26,11 @@ async def test_local_docker_execution():
         assert response["captured_state"]["result"] == "30"
         assert "ram" in response
         assert "exec_time" in response
-        print(f"\n✅ Test réussi ! RAM utilisée: {response['ram']:.2f} MB")
+        print(f"\nTest réussi ! RAM utilisée: {response['ram']:.2f} MB")
 
     finally:
-        # 4. Nettoyage (Arrêt du conteneur)
         adapter.terminate_instance(instance["pod_id"])
         print("✅ Conteneur nettoyé.")
 
 if __name__ == "__main__":
-    # Pour lancer le test manuellement : python tests/test_local_cloud.py
     asyncio.run(test_local_docker_execution())

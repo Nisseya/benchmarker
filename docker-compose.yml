@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: benchmark_db
+    restart: always
+    environment:
+      POSTGRES_USER: nisseya
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: benchmark_db
+    ports:
+      - "5432:5432"
+    volumes:
+      # Données PostgreSQL persistantes
+      - postgres_data:/var/lib/postgresql/data
+
+      # Script exécuté UNIQUEMENT au premier init
+      - ./infrastructure/persistence/01_clean_init.sql:/docker-entrypoint-initdb.d/01_clean_init.sql
+
+  app:
+    build: .
+    container_name: benchmark_api
+    depends_on:
+      - postgres
+    environment:
+      - DATABASE_URL=postgresql://nisseya:password123@postgres:5432/benchmark_db
+      - APP_ENV=local
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    ports:
+      - "8000:8000"
+    volumes:
+      # Permet au code Python de piloter Docker sur l'hôte
+      - /var/run/docker.sock:/var/run/docker.sock
+
+      # Datasets locaux
+      - ./datasets:/app/datasets
+
+volumes:
+  postgres_data:
