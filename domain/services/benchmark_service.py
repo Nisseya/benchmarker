@@ -1,87 +1,90 @@
-import uuid
-
-from domain.models.benchmark import BenchmarkTask
-from domain.models.evaluation import Evaluation
-from domain.ports.executor import ExecutorPort
-from domain.ports.cloud import CloudProviderPort
-from domain.ports.repository import RepositoryPort
-from domain.ports.llm import LLMClientPort
+import logging
+from uuid import UUID, uuid4
+from typing import List
+from domain.models.evaluation import EvaluationSession, TaskResult, ExecutionMetrics
 
 class BenchmarkService:
-    def __init__(
-        self,
-        cloud_provider: CloudProviderPort,
-        executor: ExecutorPort,
-        llm_client: LLMClientPort,
-        repository: RepositoryPort
-    ):
-        self.cloud_provider = cloud_provider
-        self.executor = executor
-        self.llm_client = llm_client
+    def __init__(self, repository, cloud, llm, notifier):
         self.repository = repository
+        self.cloud = cloud
+        self.llm = llm
+        self.notifier = notifier
+        self.logger = logging.getLogger(__name__)
 
-    def run_full_benchmark(self, model_id: str, category: str):
-        """Lance l'évaluation complète pour un modèle donné."""
-        tasks = self.repository.get_all_tasks(category)
+    async def run_full_benchmark(self, team_id: UUID, model_name: str, categories: List[str]):
+        """
+        Orchestrateur principal du benchmark.
+        """
+        # 1. Initialisation de la session
+        session_id = uuid4()
+        tasks = self.repository.get_tasks_by_categories(categories)
         
-        # 1. On prépare l'infrastructure (ex: RunPod)
-        # On peut réutiliser la même instance pour toute la série de tests
-        instance_id = self.cloud_provider.provision_instance(docker_image="eval-runner:latest")
+        session = EvaluationSession(
+            id=uuid4(),
+            team_id=team_id,
+            session_id=session_id,
+            language="Multi",
+            model_name=model_name,
+            status="running"
+        )
+        self.repository.save_evaluation_session(session)
+
+        instance = await self.cloud.provision_instance()
         
         try:
-            for task in tasks:
-                self._evaluate_single_task(model_id, instance_id, task)
+            for index, task in enumerate(tasks):
+                generated_code = await self.llm.generate_code(task.content, model_name)
+                
+                execution_response = await self.cloud.send_task_to_worker(
+                    instance["url"], 
+                    {
+                        "code": generated_code,
+                        "context": task.contexts[0].schema_definition,
+                        "language": task.language
+                    }
+                )
+
+                is_correct = self._verify_gold_standard(execution_response, task.gold_code)
+                silver_score = self._calculate_silver_score(execution_response, task)
+
+                result = TaskResult(
+                    id=uuid4(),
+                    evaluation_id=session.id,
+                    question_id=task.id,
+                    generated_code=generated_code,
+                    is_correct=is_correct,
+                    silver_score=silver_score,
+                    generation_duration=execution_response.get("gen_time", 0),
+                    metrics=ExecutionMetrics(
+                        cpu_usage_percent=execution_response.get("cpu", 0),
+                        ram_usage_mb=execution_response.get("ram", 0),
+                        duration_ms=execution_response.get("exec_time", 0),
+                        error_msg=execution_response.get("error")
+                    )
+                )
+
+                self.repository.save_task_result(result)
+                await self.notifier.publish_progress({
+                    "session_id": str(session_id),
+                    "current": index + 1,
+                    "total": len(tasks),
+                    "last_result": is_correct
+                })
+
+            session.status = "completed"
+            
+        except Exception as e:
+            self.logger.error(f"Benchmark failed: {e}")
+            session.status = "failed"
         finally:
-            # 2. On éteint toujours la machine pour éviter de vider le compte RunPod
-            self.cloud_provider.terminate_instance(instance_id)
+            self.repository.update_session_status(session.id, session.status)
+            self.cloud.terminate_instance(instance["pod_id"])
 
-    def _evaluate_single_task(self, model_id: str, instance_id: str, task: BenchmarkTask):
-        # 3. Génération du code par le LLM testé
-        prompt = f"Question: {task.question}\nContext: {task.context_db_path}"
-        generated_code = self.llm_client.generate_code(prompt, model_id)
+    def _verify_gold_standard(self, response: dict, gold_code: str) -> bool:
+        """Compare l'output du worker avec le résultat attendu."""
+        return response.get("output") == response.get("expected_output")
 
-        # 4. Exécution du code (via le port qui communique avec RunPod ou Docker)
-        # On passe le contexte (ex: chemin de la DB SQLite de Spider)
-        exec_result = self.executor.execute(generated_code, context={"db": task.context_db_path})
-
-        # 5. Validation "Silver Standard"
-        # On compare l'état des variables capturées avec le code Gold
-        gold_exec = self.executor.execute(task.gold_answer_code, context={"db": task.context_db_path})
-        
-        silver_score = self._calculate_state_similarity(
-            exec_result.captured_state, 
-            gold_exec.captured_state
-        )
-
-        # 6. Validation "LLM-as-a-Judge" (Optionnel pour le SQL, crucial pour Python)
-        judge_feedback = self.llm_client.judge_answer(
-            question=task.question,
-            code=generated_code,
-            output=exec_result.output
-        )
-
-        # 7. Création de l'entité Evaluation et sauvegarde
-        eval_run = Evaluation(
-            evaluation_id=str(uuid.uuid4()),
-            task_id=task.task_id,
-            model_name=model_id,
-            generated_code=generated_code,
-            is_correct=(exec_result.output == gold_exec.output),
-            silver_score=silver_score,
-            judge_feedback=judge_feedback,
-            metrics=exec_result.metrics # Contient temps, RAM, CPU
-        )
-
-        self.repository.save_result(eval_run)
-
-    def _calculate_state_similarity(self, state_a: dict, state_b: dict) -> float:
-        """Logique interne pour comparer les variables (Silver Standard)."""
-        if not state_a or not state_b:
-            return 0.0
-        # Ici, on compare les clés et les valeurs des dictionnaires de variables
-        common_keys = set(state_a.keys()) & set(state_b.keys())
-        if not common_keys:
-            return 0.0
-        
-        matches = sum(1 for k in common_keys if state_a[k] == state_b[k])
-        return matches / max(len(state_a), len(state_b))
+    def _calculate_silver_score(self, response: dict, task) -> float:
+        """Calcule la proximité de l'état des variables (Silver Standard)."""
+        captured_state = response.get("captured_state", {})
+        return 1.0 if response.get("status") == "success" else 0.0

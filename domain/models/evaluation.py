@@ -1,28 +1,34 @@
-from dataclasses import dataclass
+from typing import Optional, List
+from dataclasses import dataclass, field
+from uuid import UUID
 from datetime import datetime
-from .metrics import ExecutionMetrics
+
+@dataclass(frozen=True)
+class ExecutionMetrics:
+    cpu_usage_percent: float
+    ram_usage_mb: float
+    duration_ms: float
+    error_msg: Optional[str] = None
 
 @dataclass
-class Evaluation:
-    evaluation_id: str
-    team_id: str
-    session_id: str
-    task_id: str
-    model_name: str
+class TaskResult:
+    id: UUID
+    evaluation_id: UUID
+    question_id: UUID
     generated_code: str
-    
-    # Résultats de validation
-    is_correct: bool      # Gold Standard (Output match)
-    silver_score: float   # Silver Standard (State/Variables match)
-    judge_feedback: str   # Feedback du LLM-as-a-judge
-    
-    # Métriques techniques
+    is_correct: bool
+    silver_score: float
+    generation_duration: float
     metrics: ExecutionMetrics
-    
-    created_at: datetime = datetime.now()
+    created_at: datetime = field(default_factory=datetime.now)
 
-    def final_score(self) -> float:
-        """Logique métier : pondération du score final"""
-        # Exemple : 70% exactitude technique, 30% efficacité ressources
-        base_score = 1.0 if self.is_correct else (self.silver_score * 0.5)
-        return base_score
+@dataclass
+class EvaluationSession:
+    id: UUID
+    team_id: UUID
+    session_id: UUID         # ID unique pour le run complet
+    language: str
+    model_name: str
+    status: str              # 'pending', 'running', 'completed', 'failed'
+    results: List[TaskResult] = field(default_factory=list)
+    created_at: datetime = field(default_factory=datetime.now)
