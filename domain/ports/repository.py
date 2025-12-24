@@ -5,6 +5,7 @@ from uuid import UUID
 from domain.models.evaluation import EvaluationSession, TaskResult
 from domain.models.task import Question, DataContext
 from domain.models.identity import Team, Participant
+from domain.models.hackathon import Hackathon
 
 class RepositoryPort(ABC):
     # =========================
@@ -109,6 +110,30 @@ class RepositoryPort(ABC):
 
     @abstractmethod
     def get_participant_by_email(self, email: str) -> Optional[Participant]:
+        pass
+    
+    # =========================
+    # Hackathons
+    # =========================
+
+    @abstractmethod
+    def create_hackathon(self, hackathon: Hackathon) -> None:
+        pass
+
+    @abstractmethod
+    def get_hackathon_by_id(self, hackathon_id: UUID) -> Optional[Hackathon]:
+        pass
+
+    @abstractmethod
+    def get_hackathon_by_name(self, name: str) -> Optional[Hackathon]:
+        pass
+
+    @abstractmethod
+    def list_hackathons(self) -> List[Hackathon]:
+        pass
+
+    @abstractmethod
+    def delete_hackathon(self, hackathon_id: UUID) -> None:
         pass
 
     # =========================

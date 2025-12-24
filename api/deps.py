@@ -14,6 +14,7 @@ from domain.services.benchmark_service import BenchmarkService
 from domain.services.dataset_service import DatasetService
 from domain.services.team_service import TeamService
 from domain.services.participant_service import ParticipantService
+from domain.services.hackathon_service import HackathonService
 
 
 ws_manager = ConnectionManager()
@@ -47,6 +48,9 @@ def get_team_service(repo: PostgresRepository = Depends(get_repository)) -> Team
 
 def get_participant_service(repo: PostgresRepository = Depends(get_repository)) -> ParticipantService:
     return ParticipantService(repository=repo)
+
+def get_hackathon_service(repo: PostgresRepository = Depends(get_repository)) -> HackathonService:
+    return HackathonService(repository=repo)
 
 
 def get_benchmark_service(

@@ -6,6 +6,9 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 from sqlalchemy import func, Integer, cast
 
+from infrastructure.persistence.tables import HackathonTable
+
+from domain.models.hackathon import Hackathon
 from domain.ports.repository import RepositoryPort
 from domain.models.evaluation import EvaluationSession, TaskResult
 from domain.models.task import Question, DataContext
@@ -283,6 +286,48 @@ class PostgresRepository(RepositoryPort):
             last_name=p.last_name,
             email=p.email,
         )
+    
+    # =========================
+    # Hackathon
+    # =========================
+    
+    def create_hackathon(self, hackathon: Hackathon) -> None:
+        row = HackathonTable(
+            id=hackathon.id,
+            name=hackathon.name,
+            start_date=hackathon.start_date,
+            end_date=hackathon.end_date,
+            created_at=hackathon.created_at,
+        )
+        self.session.add(row)
+        self.session.commit()
+
+    def get_hackathon_by_id(self, hackathon_id: UUID) -> Optional[Hackathon]:
+        h = self.session.query(HackathonTable).filter_by(id=hackathon_id).first()
+        return self._map_to_hackathon_domain(h) if h else None
+
+    def get_hackathon_by_name(self, name: str) -> Optional[Hackathon]:
+        h = self.session.query(HackathonTable).filter_by(name=name).first()
+        return self._map_to_hackathon_domain(h) if h else None
+
+    def list_hackathons(self) -> List[Hackathon]:
+        rows = self.session.query(HackathonTable).order_by(HackathonTable.created_at.desc()).all()
+        return [self._map_to_hackathon_domain(h) for h in rows]
+
+    def delete_hackathon(self, hackathon_id: UUID) -> None:
+        self.session.query(HackathonTable).filter_by(id=hackathon_id).delete()
+        self.session.commit()
+
+    def _map_to_hackathon_domain(self, h: HackathonTable) -> Hackathon:
+        return Hackathon(
+            id=h.id,
+            name=h.name,
+            start_date=h.start_date,
+            end_date=h.end_date,
+            created_at=h.created_at,
+        )
+
+
 
     # =========================
     # Analytics & Reporting
