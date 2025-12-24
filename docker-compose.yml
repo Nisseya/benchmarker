@@ -16,7 +16,7 @@ services:
       # Script exécuté UNIQUEMENT au premier init
       - ./infrastructure/persistence/01_clean_init.sql:/docker-entrypoint-initdb.d/01_clean_init.sql
 
-  app:
+  api:
     build: .
     container_name: benchmark_api
     depends_on:
@@ -28,10 +28,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      # Permet au code Python de piloter Docker sur l'hôte
       - /var/run/docker.sock:/var/run/docker.sock
-
-      # Datasets locaux
       - ./datasets:/app/datasets
 
 volumes:

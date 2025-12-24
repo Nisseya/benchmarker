@@ -1,0 +1,7 @@
+- Make it work locally
+- Make it work with online Pods
+- Build the dataset recuperation pipeline // So everything works
+- Build template so people can send their submission
+--> Either they build a docker image
+--> Or if it's on huggingface, they can just send the link of the model?
+- Build a small frontend

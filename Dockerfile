@@ -18,4 +18,4 @@ RUN /uvbin/uv sync --frozen --no-cache
 COPY . .
 
 # Commande de lancement
-CMD ["/uvbin/uv", "run", "fastapi", "run", "api.main.py", "--port", "8000"]
+CMD ["/uvbin/uv", "run", "python","-m","uvicorn", "api.main:app","--host", "0.0.0.0", "--port", "8000"]

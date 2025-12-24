@@ -1,6 +1,6 @@
 import logging
 from uuid import UUID, uuid4
-from typing import List
+from typing import List, Dict, Any
 from domain.models.evaluation import EvaluationSession, TaskResult, ExecutionMetrics
 
 class BenchmarkService:
@@ -10,6 +10,25 @@ class BenchmarkService:
         self.llm = llm
         self.notifier = notifier
         self.logger = logging.getLogger(__name__)
+    
+    def init_session(self, team_id: UUID, model_name: str) -> UUID:
+        """
+        Crée une EvaluationSession en base et retourne le session_id public
+        utilisé par le websocket.
+        """
+        session_id = uuid4()
+
+        session = EvaluationSession(
+            id=uuid4(),
+            team_id=team_id,
+            session_id=session_id,
+            language="Multi",
+            model_name=model_name,
+            status="running",
+        )
+        self.repository.save_evaluation_session(session)
+
+        return session_id
 
     async def run_full_benchmark(self, team_id: UUID, model_name: str, categories: List[str]):
         """
@@ -79,6 +98,38 @@ class BenchmarkService:
         finally:
             self.repository.update_session_status(session.id, session.status)
             self.cloud.terminate_instance(instance["pod_id"])
+    
+    def get_leaderboard(self) -> List[Dict[str, Any]]:
+        """
+        Retourne un classement agrégé par team.
+        Le calcul exact dépend de ton modèle, ici un exemple:
+        - total_tasks
+        - correct_count
+        - avg_silver_score
+        - final_score = correct_count + avg_silver_score
+        """
+        rows = self.repository.get_leaderboard_rows()
+
+        leaderboard = []
+        for r in rows:
+            correct_count = int(r["correct_count"])
+            total_tasks = int(r["total_tasks"])
+            avg_silver = float(r["avg_silver_score"])
+            final_score = correct_count + avg_silver
+
+            leaderboard.append(
+                {
+                    "team_id": r["team_id"],
+                    "team_name": r.get("team_name"),
+                    "total_tasks": total_tasks,
+                    "correct_count": correct_count,
+                    "avg_silver_score": avg_silver,
+                    "final_score": final_score,
+                }
+            )
+
+        leaderboard.sort(key=lambda x: x["final_score"], reverse=True)
+        return leaderboard
 
     def _verify_gold_standard(self, response: dict, gold_code: str) -> bool:
         """Compare l'output du worker avec le résultat attendu."""
