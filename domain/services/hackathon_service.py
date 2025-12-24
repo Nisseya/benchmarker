@@ -7,7 +7,7 @@ from uuid import UUID
 
 from domain.ports.repository import RepositoryPort
 from domain.models.hackathon import Hackathon
-from domain.exceptions.hackathon import (
+from domain.exceptions import (
     HackathonNotFound,
     HackathonAlreadyExists,
     HackathonInvalidDates,

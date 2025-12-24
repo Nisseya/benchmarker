@@ -1,11 +1,7 @@
 from uuid import UUID
+from domain.exceptions.base import DomainError
 
-
-class ParticipantError(Exception):
-    """Base class for participant-related domain errors."""
-
-
-class ParticipantNotFound(ParticipantError):
+class ParticipantNotFound(DomainError):
     def __init__(self, participant_id: UUID | None = None):
         msg = "Participant not found"
         if participant_id:
@@ -13,6 +9,6 @@ class ParticipantNotFound(ParticipantError):
         super().__init__(msg)
 
 
-class ParticipantAlreadyExists(ParticipantError):
+class ParticipantAlreadyExists(DomainError):
     def __init__(self, email: str):
         super().__init__(f"Participant with email '{email}' already exists")

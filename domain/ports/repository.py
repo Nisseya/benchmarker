@@ -81,7 +81,7 @@ class RepositoryPort(ABC):
         pass
 
     @abstractmethod
-    def add_participant_to_team(self, team_id: UUID, participant: Participant) -> None:
+    def add_participant_to_team(self, team_id: UUID, participant_id: UUID) -> None:
         pass
 
     @abstractmethod

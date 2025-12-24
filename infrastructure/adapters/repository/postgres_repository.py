@@ -200,30 +200,27 @@ class PostgresRepository(RepositoryPort):
             for t in teams
         ]
 
-    def add_participant_to_team(self, team_id: UUID, participant: Participant) -> None:
-        self.session.merge(
-            ParticipantTable(
-                id=participant.id,
-                first_name=participant.first_name,
-                last_name=participant.last_name,
-                email=participant.email,
-            )
-        )
-        self.session.commit()
-
+    def add_participant_to_team(self, team_id: UUID, participant_id: UUID) -> None:
         exists = (
             self.session.query(team_members)
             .filter(
                 team_members.c.team_id == team_id,
-                team_members.c.participant_id == participant.id,
+                team_members.c.participant_id == participant_id,
             )
             .first()
         )
-        if not exists:
-            self.session.execute(
-                team_members.insert().values(team_id=team_id, participant_id=participant.id)
+
+        if exists:
+            return
+
+        self.session.execute(
+            team_members.insert().values(
+                team_id=team_id,
+                participant_id=participant_id,
             )
-            self.session.commit()
+        )
+        self.session.commit()
+
 
     def remove_participant_from_team(self, team_id: UUID, participant_id: UUID) -> None:
         self.session.execute(

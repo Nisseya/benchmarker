@@ -3,7 +3,7 @@ from typing import List
 
 from domain.models.identity import Participant
 from domain.ports.repository import RepositoryPort
-from domain.exceptions.participant import ParticipantNotFound
+from domain.exceptions import ParticipantNotFound
 
 
 class ParticipantService:
