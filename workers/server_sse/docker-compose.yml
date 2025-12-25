@@ -1,0 +1,60 @@
+version: "3.9"
+
+services:
+  hf-worker-gpu0:
+    image: hf-bench-sse:gpu
+    container_name: hf-worker-gpu0
+    runtime: nvidia
+    ports:
+      - "8000:8000"
+    environment:
+      HF_DEVICE: cuda
+      HF_DTYPE: float16
+
+      REQUIRE_REVISION: "1"
+      MAX_REPO_SIZE_GB: "30"
+      ALLOW_SAFETENSORS_ONLY: "1"
+
+      HF_HOME: /models
+      TRANSFORMERS_CACHE: /models
+      MODEL_STORE_DIR: /models_store
+    volumes:
+      - /mnt/nvme/hf_cache:/models
+      - /mnt/nvme/models_store:/models_store
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0"]
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  hf-worker-gpu1:
+    image: hf-bench-sse:gpu
+    container_name: hf-worker-gpu1
+    runtime: nvidia
+    ports:
+      - "8001:8000"
+    environment:
+      HF_DEVICE: cuda
+      HF_DTYPE: float16
+
+      REQUIRE_REVISION: "1"
+      MAX_REPO_SIZE_GB: "30"
+      ALLOW_SAFETENSORS_ONLY: "1"
+
+      HF_HOME: /models
+      TRANSFORMERS_CACHE: /models
+      MODEL_STORE_DIR: /models_store
+    volumes:
+      - /mnt/nvme/hf_cache:/models
+      - /mnt/nvme/models_store:/models_store
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["1"]
+              capabilities: [gpu]
+    restart: unless-stopped

@@ -1,5 +1,6 @@
 - Make it work locally
 - Make it work with online Pods
+- Add database to the questions etc
 - Build the dataset recuperation pipeline // So everything works
 - Build template so people can send their submission
 --> Either they build a docker image
