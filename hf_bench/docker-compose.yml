@@ -3,12 +3,13 @@ version: "3.9"
 services:
   hf-bench:
     build: .
-    image: hf-bench-sse:gpu
+    image: hf-bench:latest 
     container_name: hf-bench
     runtime: nvidia
     ports:
       - "8000:8000"
     environment:
+      DB_URL: "sqlite:////app/data/hf_bench.sqlite"
       HF_DEVICE: cuda
       HF_DTYPE: float16
 

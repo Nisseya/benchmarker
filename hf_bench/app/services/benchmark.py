@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import psutil
 import torch
 
 from app.core.config import Settings
+
 
 def build_prompt(schema: str, question: str) -> str:
     return (
@@ -28,18 +29,42 @@ def build_prompt(schema: str, question: str) -> str:
         "SQL QUERY:\n"
     )
 
+
 def extract_sql(text: str) -> str:
     t = text.strip()
     if ";" in t:
         return t.split(";", 1)[0].strip() + ";"
     return t
 
+
 @dataclass
 class BenchRunner:
     settings: Settings
 
+    def warmup(
+        self,
+        *,
+        tokenizer: Any,
+        model: Any,
+        schema: str,
+        question: str,
+    ) -> None:
+        prompt = build_prompt(schema, question)
+        if len(prompt) > self.settings.max_prompt_chars:
+            prompt = prompt[: self.settings.max_prompt_chars]
+
+        inputs = tokenizer(prompt, return_tensors="pt")
+        inputs = {k: v.to(self.settings.device) for k, v in inputs.items()}
+
+        with torch.no_grad():
+            _ = model.generate(**inputs, max_new_tokens=16, do_sample=False)
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+
     def run_once(
         self,
+        *,
+        question_id: int,
         tokenizer: Any,
         model: Any,
         schema: str,
@@ -63,18 +88,10 @@ class BenchRunner:
         inputs = tokenizer(prompt, return_tensors="pt")
         inputs = {k: v.to(self.settings.device) for k, v in inputs.items()}
 
-        with torch.no_grad():
-            _ = model.generate(
-                **inputs,
-                max_new_tokens=min(16, max_new),
-                temperature=temperature,
-                top_p=top_p,
-                do_sample=do_sample,
-            )
         if torch.cuda.is_available():
             torch.cuda.synchronize()
-
         gen_start = time.perf_counter()
+
         with torch.no_grad():
             out_ids = model.generate(
                 **inputs,
@@ -83,6 +100,7 @@ class BenchRunner:
                 top_p=top_p,
                 do_sample=do_sample,
             )
+
         if torch.cuda.is_available():
             torch.cuda.synchronize()
         gen_end = time.perf_counter()
@@ -99,16 +117,16 @@ class BenchRunner:
         tps = num_new_tokens / gen_s
 
         return {
-            "prompt": prompt,
+            "question_id": question_id,
             "raw_answer": completion,
             "sql": sql,
             "metrics": {
-                "exec_time_ms": (end - start) * 1000,
                 "gen_time_ms": (gen_end - gen_start) * 1000,
+                "exec_time_ms": (end - start) * 1000,
                 "new_tokens": num_new_tokens,
                 "tokens_per_s": tps,
                 "ram_delta_mb": end_mem - start_mem,
-                "cpu_percent": psutil.cpu_percent(),
+                "cpu_percent": psutil.cpu_percent(interval=None),
                 "gpu": gpu_stats_fn(),
             },
         }

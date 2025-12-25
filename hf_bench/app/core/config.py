@@ -3,6 +3,10 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
+DB_URL = os.getenv("DB_URL", "sqlite:////app/data/hf_bench.sqlite")
+SPIDER_QUESTIONS_TABLE = os.getenv("SPIDER_QUESTIONS_TABLE", "spider_benchmark_questions")
+
+
 @dataclass(frozen=True)
 class Settings:
     hf_cache_dir: str = os.getenv("HF_HOME", "/models")
@@ -19,5 +23,7 @@ class Settings:
 
     device: str = os.getenv("HF_DEVICE", "cuda")
     dtype: str = os.getenv("HF_DTYPE", "float16")
+    DB_URL = os.getenv("DB_URL", "sqlite:////data/hf_bench.sqlite")
+    SPIDER_QUESTIONS_TABLE = os.getenv("SPIDER_QUESTIONS_TABLE", "spider_benchmark_questions")
 
 settings = Settings()
