@@ -74,3 +74,40 @@ class ModelStore:
             f.write("ok\n")
 
         return dst
+
+    def is_on_nvme(self, model_id: str, revision: str) -> bool:
+        dst = self._local_dir(model_id, revision)
+        marker = os.path.join(dst, ".READY")
+        return os.path.exists(marker)
+    
+    def list_ready_models(self) -> list[dict]:
+        """
+        Retourne la liste des modèles présents sur disque (READY),
+        sous la forme [{model_id, revision, path}]
+        """
+        out = []
+
+        if not os.path.isdir(self.settings.model_store_dir):
+            return out
+
+        for model_dir in os.listdir(self.settings.model_store_dir):
+            model_path = os.path.join(self.settings.model_store_dir, model_dir)
+            if not os.path.isdir(model_path):
+                continue
+
+            # model_dir = model_id avec "/" -> "__"
+            model_id = model_dir.replace("__", "/")
+
+            for revision in os.listdir(model_path):
+                rev_path = os.path.join(model_path, revision)
+                marker = os.path.join(rev_path, ".READY")
+                if os.path.isdir(rev_path) and os.path.exists(marker):
+                    out.append(
+                        {
+                            "model_id": model_id,
+                            "revision": revision,
+                            "path": rev_path,
+                        }
+                    )
+
+        return out

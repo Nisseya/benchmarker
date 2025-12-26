@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from huggingface_hub import HfApi
 
 from app.core.config import settings
-from app.api.routes import bench_router, health_router, bench_tot_router
+from app.api.routes import bench_router, health_router, bench_tot_router, models_router
 from app.services.model_store import ModelStore
 from app.services.gpu_runtime import GpuRuntime
 from app.services.benchmark import BenchRunner
@@ -20,6 +20,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router, tags=["health"])
     app.include_router(bench_router, tags=["bench"])
     app.include_router(bench_tot_router, tags=["complete benchmark"])
+    app.include_router(models_router, tags=["Models"])
 
     @app.on_event("startup")
     async def startup():
