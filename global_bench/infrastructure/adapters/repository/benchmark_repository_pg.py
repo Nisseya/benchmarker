@@ -21,7 +21,7 @@ class BenchmarkRepositoryPG(BenchmarkRepositoryPort):
                     INSERT INTO bench_runs(run_id, model_id, revision, db_id, params, status)
                     VALUES (%s,%s,%s,%s,%s::jsonb,'running')
                     """,
-                    (run_id, model_id, revision, db_id, json.dumps(params)),
+                    (str(run_id), model_id, revision, db_id, json.dumps(params)),
                 )
 
     def end_run(self, run_id: uuid.UUID, status: str) -> None:
@@ -29,7 +29,7 @@ class BenchmarkRepositoryPG(BenchmarkRepositoryPort):
             with conn.cursor() as cur:
                 cur.execute(
                     "UPDATE bench_runs SET ended_at = NOW(), status = %s WHERE run_id = %s",
-                    (status, run_id),
+                    (status, str(run_id)),
                 )
 
     def log_event(self, run_id: uuid.UUID, event_type: str, payload: Dict[str, Any]) -> None:
@@ -37,7 +37,7 @@ class BenchmarkRepositoryPG(BenchmarkRepositoryPort):
             with conn.cursor() as cur:
                 cur.execute(
                     "INSERT INTO bench_events(run_id, event_type, payload) VALUES (%s,%s,%s::jsonb)",
-                    (run_id, event_type, json.dumps(payload)),
+                    (str(run_id), event_type, json.dumps(payload)),
                 )
 
     def insert_item(self, run_id: uuid.UUID, item: Dict[str, Any]) -> None:
@@ -60,7 +60,7 @@ class BenchmarkRepositoryPG(BenchmarkRepositoryPort):
                     )
                     """,
                     (
-                        run_id,
+                        str(run_id),
                         item.get("index"),
                         item.get("question_id"),
                         item.get("db_id"),

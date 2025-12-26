@@ -1,13 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routes.ws import router as ws_router
-from api.routes.datasets import router as datasets_router
-from api.routes.benchmarks import router as benchmarks_router
-from api.routes.results import router as results_router
-from api.routes.teams import router as teams_router
-from api.routes.participants import router as participants_router
-from api.routes.hackathons import router as hackathon_router
+from app.routes.ws import router as ws_router
+from app.routes.datasets import router as datasets_router
+from app.routes.benchmarks import router as benchmarks_router
+from app.routes.results import router as results_router
+from app.routes.teams import router as teams_router
+from app.routes.participants import router as participants_router
+from app.routes.hackathons import router as hackathon_router
+from app.routes.bench_routes import router as sse_bench_router
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -21,6 +22,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(sse_bench_router, tags=["SSE ROUTER"])
 app.include_router(ws_router)
 app.include_router(datasets_router)
 app.include_router(benchmarks_router)

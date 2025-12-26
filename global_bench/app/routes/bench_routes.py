@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import Optional
 
-from domain.services.execution_service import ExecutionService
-from domain.services.benchmark_enrichment_service import BenchmarkEnrichmentService
-from domain.services.global_benchmark_stream_service import GlobalBenchmarkStreamService, GlobalStreamDeps
-from infrastructure.repository.benchmark_repository_pg import BenchmarkRepositoryPG
-from infrastructure.workers.local_worker_selector import LocalWorkerSelector
+from app.core.container import Container
+from app.core.deps import get_container
 
 
 router = APIRouter()
@@ -24,10 +21,11 @@ def parse_hf_input(model: str, revision: Optional[str]) -> tuple[str, str]:
 
 
 class CompleteBenchmarkRequest(BaseModel):
-    model: str = Field(..., description="HF repo id 'org/model' or https://huggingface.co/org/model")
-    revision: Optional[str] = Field(None, description="HF revision (commit SHA recommended).")
+    model: str = Field(...)
+    revision: Optional[str] = None
 
-    db_id: str = Field(..., description="Dataset id (Spider db_id).")
+    db_id: str = Field(...)
+
     limit: int = Field(200, ge=1, le=100000)
     offset: int = Field(0, ge=0)
 
@@ -39,21 +37,15 @@ class CompleteBenchmarkRequest(BaseModel):
 
 
 @router.post("/bench/complete/stream")
-async def complete_benchmark_stream(req: CompleteBenchmarkRequest, request: Request):
+async def complete_benchmark_stream(
+    req: CompleteBenchmarkRequest,
+    request: Request,
+    container: Container = Depends(get_container),
+):
     model_id, revision = parse_hf_input(req.model, req.revision)
 
-    worker_selector = LocalWorkerSelector("http://localhost:8001")
-
-    exec_service = ExecutionService(datasets_root="datasets/test_database")
-    enrich = BenchmarkEnrichmentService(exec_service)
-
-    repo = BenchmarkRepositoryPG(dsn="postgresql://postgres:postgres@localhost:5432/postgres")
-
-    svc = GlobalBenchmarkStreamService(
-        GlobalStreamDeps(worker_selector=worker_selector, repo=repo, enrich=enrich)
-    )
-
     params = {
+        "db_id": req.db_id,
         "limit": req.limit,
         "offset": req.offset,
         "max_new_tokens": req.max_new_tokens,
@@ -64,11 +56,11 @@ async def complete_benchmark_stream(req: CompleteBenchmarkRequest, request: Requ
     }
 
     async def stream():
-        async for chunk in svc.stream(
+        async for chunk in container.global_stream.stream(
             model_id=model_id,
             revision=revision,
             db_id=req.db_id,
-            params=params,
+            params={k: v for k, v in params.items() if k != "db_id"},
             request=request,
         ):
             yield chunk

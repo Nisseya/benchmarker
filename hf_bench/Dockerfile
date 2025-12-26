@@ -36,4 +36,4 @@ RUN mkdir -p /app/data
 COPY app/data/hf_bench.sqlite /app/data/hf_bench.sqlite
 
 EXPOSE 8000
-CMD ["python3.11", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python3.11", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]

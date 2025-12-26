@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from domain.services.dataset_service import DatasetService
-from api.deps import get_dataset_service
+from app.deps import get_dataset_service
 
 router = APIRouter(prefix="/datasets", tags=["Admin"])
 

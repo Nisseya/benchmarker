@@ -4,7 +4,7 @@ from typing import List
 from fastapi import APIRouter, Depends, BackgroundTasks
 
 from domain.services.benchmark_service import BenchmarkService
-from api.deps import get_benchmark_service
+from app.deps import get_benchmark_service
 
 router = APIRouter(prefix="/benchmarks", tags=["Execution"])
 

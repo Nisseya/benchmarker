@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from domain.services.benchmark_service import BenchmarkService
-from api.deps import get_benchmark_service
+from app.deps import get_benchmark_service
 
 router = APIRouter(tags=["Results"])
 

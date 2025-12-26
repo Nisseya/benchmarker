@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from domain.services.hackathon_service import HackathonService
 from domain.exceptions import HackathonNotFound, HackathonAlreadyExists, HackathonInvalidDates
-from api.deps import get_hackathon_service  # <-- add this
+from app.deps import get_hackathon_service  # <-- add this
 
 router = APIRouter(prefix="/hackathons", tags=["hackathons"])
 

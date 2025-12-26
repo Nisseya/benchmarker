@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, EmailStr
 
-from api.deps import get_participant_service
+from app.deps import get_participant_service
 from domain.services.participant_service import ParticipantService
 
 router = APIRouter(prefix="/participants", tags=["participants"])

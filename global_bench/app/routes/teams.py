@@ -1,7 +1,7 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
-from api.deps import get_team_service
+from app.deps import get_team_service
 from domain.services.team_service import TeamService
 from domain.models.identity import Participant
 from domain.exceptions import TeamNotFound, ParticipantNotFound
